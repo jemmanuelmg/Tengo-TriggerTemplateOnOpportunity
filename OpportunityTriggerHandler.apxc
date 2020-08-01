@@ -1,0 +1,29 @@
+public with sharing class OpportunityTriggerHandler implements ITriggerHandler{
+
+    public OpportunityTriggerHandler() { 
+    }
+    
+    public void onBeforeInsert(List<SObject> newItems) { 
+    }
+
+    public void onBeforeUpdate(Map<Id, SObject> newItems, Map<Id, SObject> oldItems) {
+        
+        OpportunityService.rejectClosedWonOppsWithoutSalesReps(newItems);
+    }
+    
+    public void onBeforeDelete(Map<Id, SObject> deletedOpptyLineItems) {
+    }
+
+    public void onAfterInsert(Map<Id, SObject> newItems) {
+    }
+
+    public void onAfterUpdate(Map<Id, SObject> newItems, Map<Id, SObject> oldItems) {
+    }
+
+    public void onAfterDelete(Map<Id, SObject> newItems) {
+    }
+    
+    public void onAfterUnDelete(Map<Id, SObject> newItems) {
+    }
+    
+}

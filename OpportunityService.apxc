@@ -1,0 +1,36 @@
+public class OpportunityService {
+    
+	public static void rejectClosedWonOppsWithoutSalesReps(Map<Id, SObject> newOpportunitiesMap) {
+
+        Set<Id> opptyIdSet = newOpportunitiesMap.keySet();
+        AggregateResult[] countTeamMembersByOppty = [SELECT OpportunityId, COUNT(Id)SalesRepCount
+                                                     FROM OpportunityTeamMember
+                                                     WHERE TeamMemberRole = 'Sales Rep' AND OpportunityId IN :opptyIdSet
+                                                     GROUP BY OpportunityId]; 
+        
+        for (SObject record : newOpportunitiesMap.values()) {
+            Opportunity currentOpp = (Opportunity) record;
+            
+            if (currentOpp.StageName == 'Closed Won' && countTeamMembersByOppty.size() > 0) {
+                Id opptyId = null;
+                Boolean opptyHasSalesRep = false;
+                
+                for (AggregateResult element : countTeamMembersByOppty) {
+                    opptyId = (Id) element.get('OpportunityId');
+                    if (currentOpp.Id == opptyId) {
+                        opptyHasSalesRep = true;
+                    }
+                }
+                
+                if (!opptyHasSalesRep) {
+                    currentOpp.StageName = 'Initial Lead';
+                    newOpportunitiesMap.get(currentOpp.Id).addError('The Stage of Opportunity cannot be set to Closed Won unless there are Sales Reps associated in the Sales Team. Please add the Sales Reps before setting the Opportunity to Closed Won');
+                }
+                
+            } else if (currentOpp.StageName == 'Closed Won' && countTeamMembersByOppty.size() == 0) {
+                currentOpp.StageName = 'Initial Lead';
+                newOpportunitiesMap.get(currentOpp.Id).addError('The Stage of Opportunity cannot be set to Closed Won unless there are Sales Reps associated in the Sales Team. Please add the Sales Reps before setting the Opportunity to Closed Won');
+            }
+        }
+	}
+}

@@ -1,0 +1,176 @@
+@isTest
+private class OpportunityTriggerHandlerTest {
+    
+    @testSetup 
+    static void setup() {
+        
+        Account testAccount = new Account();
+        testAccount.Name = 'Test Acc 01';
+        testAccount.Phone = '4851548';
+        testAccount.Region__c = 'Africa';
+        insert testAccount;
+        
+        Opportunity testOpportunity1 = new Opportunity(); 
+        testOpportunity1.Name = 'Test Opp 01';
+        testOpportunity1.AccountId = testAccount.id;
+        testOpportunity1.StageName = 'Initial Lead';
+        testOpportunity1.CurrencyIsoCode = 'USD';
+        testOpportunity1.DMS_Product__c = 'AIFMD Platform;Banking;Board Support';
+        testOpportunity1.CloseDate = Date.parse('07/06/2020');
+        testOpportunity1.LeadSource = 'Internal Referral';
+        testOpportunity1.Amount = 60000; 
+        insert testOpportunity1;
+        
+        Opportunity testOpportunity2 = new Opportunity(); 
+        testOpportunity2.Name = 'Test Opp 02';
+        testOpportunity2.AccountId = testAccount.id;
+        testOpportunity2.StageName = 'Initial Lead';
+        testOpportunity2.CurrencyIsoCode = 'USD';
+        testOpportunity2.DMS_Product__c = 'AIFMD Platform;Banking;Board Support';
+        testOpportunity2.CloseDate = Date.parse('07/06/2020');
+        testOpportunity2.LeadSource = 'Internal Referral';
+        testOpportunity2.Amount = 80000; 
+        insert testOpportunity2;
+        	
+        Profile testProfile = [SELECT Id FROM Profile WHERE Name ='Standard User']; 
+        User testUser = new User(Alias = 'standt', 
+                                 Email='standarduser@testorg.com', 
+                                 EmailEncodingKey='UTF-8', 
+                                 LastName='Testing', 
+                                 LanguageLocaleKey='en_US', 
+                                 LocaleSidKey='en_US', 
+                                 ProfileId = testProfile.Id, 
+                                 TimeZoneSidKey='America/Los_Angeles', 
+                                 UserName='testemm010203@testorg.com');
+		insert testUser;       
+        
+        OpportunityTeamMember testMember = new OpportunityTeamMember();
+        testMember.userId = testUser.Id;
+        testMember.OpportunityId = testOpportunity2.Id;
+        testMember.TeamMemberRole = 'Sales Rep';
+        insert testMember;     
+    }
+    
+    @isTest 
+    static void onBeforeInsert() { 
+        
+        Opportunity testOpportunity = [SELECT CreatedDate FROM Opportunity WHERE Name = 'Test Opp 01' LIMIT 1];
+        
+        Test.startTest();
+            try {
+                insert testOpportunity;
+            } catch(Exception e) {
+                System.debug(e);
+            }
+     	Test.stopTest();
+        
+        System.assert(testOpportunity.CreatedDate != null, 'Expected to not have null value in CreatedDate');
+    }
+
+    @isTest 
+    static void testPositiveOnBeforeUpdateNoSalesRep() {
+        
+        Opportunity newTestOpportunity1 = [SELECT Id, StageName FROM Opportunity WHERE Name = 'Test Opp 01' LIMIT 1]; 
+        newTestOpportunity1.StageName = 'Closed Won';
+        
+        Opportunity newTestOpportunity2 = [SELECT Id, StageName FROM Opportunity WHERE Name = 'Test Opp 02' LIMIT 1]; 
+        newTestOpportunity2.StageName = 'Closed Won';
+        
+        List<Opportunity> auxOpptyList = new List<Opportunity>();
+        auxOpptyList.add(newTestOpportunity1);
+        auxOpptyList.add(newTestOpportunity2);
+        
+        Test.startTest();
+            Database.saveResult[] databaseResultList = Database.update(auxOpptyList, false);
+        Test.stopTest();
+        
+        Database.saveResult finalResult = databaseResultList[0];
+        
+        System.assertEquals(false, finalResult.isSuccess(), 'Expected that the OpportunityTrigger prevented the updation of the StageName. One of the Opportunities did not have any Sales Rep in its Opportunity Team and despite of that was updated');
+        System.assert(finalResult.getErrors().size() > 0, 'Expected to not have any erros in the execution');
+    }
+    
+    @isTest 
+    static void testNegativeOnBeforeUpdateNoSalesRep() {
+        
+        Opportunity newTestOpportunity1 = [SELECT Id, StageName FROM Opportunity WHERE Name = 'Test Opp 01' LIMIT 1];
+        
+        List<Opportunity> auxOpptyList = new List<Opportunity>();
+        auxOpptyList.add(newTestOpportunity1);
+        
+        Test.startTest();
+            Database.saveResult[] databaseResultList = Database.update(auxOpptyList, false);
+        Test.stopTest();
+        
+        Database.saveResult finalResult = databaseResultList[0];
+        
+        System.assertEquals(true, finalResult.isSuccess(), 'Expected that the Opportunity Trigger would not have rejected this Opportunity because it did not meet the criteria to be rejected');
+    }
+    
+    @isTest 
+    static void onBeforeDelete() {
+        
+        Opportunity testOpportunity = [SELECT IsDeleted FROM Opportunity WHERE Name = 'Test Opp 01' LIMIT 1]; 
+        
+        Test.startTest();
+        	delete testOpportunity;
+     	Test.stopTest();
+        
+        System.assert(testOpportunity.IsDeleted == false, 'Expected to have IsDeleted as false');
+    }
+
+    @isTest 
+    static void onAfterInsert() {
+        
+        Opportunity testOpportunity = [SELECT CreatedDate FROM Opportunity WHERE Name = 'Test Opp 01' LIMIT 1]; 
+        
+        Test.startTest();
+            try {
+                insert testOpportunity;
+            } catch(Exception e) {
+                System.debug(e);
+            }
+     	Test.stopTest();
+        
+        System.assert(testOpportunity.CreatedDate != null, 'Expected to have not null in CreatedDate');
+    }
+
+    @isTest 
+    static void onAfterUpdate() {
+        
+        Opportunity testOpportunity = [SELECT Id, StageName FROM Opportunity WHERE Name = 'Test Opp 01' LIMIT 1]; 
+        testOpportunity.Name = 'ABC123';
+        
+        Test.startTest();
+        	update testOpportunity;
+     	Test.stopTest();
+        
+        System.assert(testOpportunity.Name == 'ABC123', 'Expected to have ABC123 as Name of Opportunity');
+    }
+
+    @isTest 
+    static void onAfterDelete() {
+        
+        Opportunity testOpportunity = [SELECT IsDeleted FROM Opportunity WHERE Name = 'Test Opp 01' LIMIT 1]; 
+        
+        Test.startTest();
+        	delete testOpportunity;
+     	Test.stopTest();
+        
+        System.assert(testOpportunity.IsDeleted == false, 'Expected to have IsDeleted as false');
+    }
+    
+    @isTest 
+    static void onAfterUndelete() {
+        
+        Opportunity testOpportunity = [SELECT IsDeleted FROM Opportunity WHERE Name = 'Test Opp 01' LIMIT 1]; 
+        delete testOpportunity;
+        
+        Test.startTest();
+        	undelete testOpportunity;
+     	Test.stopTest();
+        
+        System.assert(testOpportunity.IsDeleted == false, 'Expected to have IsDeleted as false');
+    }
+    
+}

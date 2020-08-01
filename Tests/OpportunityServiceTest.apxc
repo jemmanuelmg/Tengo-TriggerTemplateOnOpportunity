@@ -1,0 +1,119 @@
+@isTest
+private class OpportunityServiceTest {
+	
+    @testSetup 
+    static void setup() {
+        
+        Account testAccount = new Account();
+        testAccount.Name = 'Test Acc 01';
+        testAccount.Phone = '4851548';
+        testAccount.Region__c = 'Africa';
+        insert testAccount;
+        
+        Opportunity testOpportunity1 = new Opportunity(); 
+        testOpportunity1.Name = 'Test Opp 01';
+        testOpportunity1.AccountId = testAccount.Id;
+        testOpportunity1.StageName = 'Initial Lead';
+        testOpportunity1.CurrencyIsoCode = 'USD';
+        testOpportunity1.DMS_Product__c = 'AIFMD Platform;Banking;Board Support';
+        testOpportunity1.CloseDate = Date.parse('07/06/2020');
+        testOpportunity1.LeadSource = 'Internal Referral';
+        testOpportunity1.Amount = 60000; 
+        insert testOpportunity1;
+        
+        Opportunity testOpportunity2 = new Opportunity(); 
+        testOpportunity2.Name = 'Test Opp 02';
+        testOpportunity2.AccountId = testAccount.Id;
+        testOpportunity2.StageName = 'Initial Lead';
+        testOpportunity2.CurrencyIsoCode = 'USD';
+        testOpportunity2.DMS_Product__c = 'AIFMD Platform;Banking;Board Support';
+        testOpportunity2.CloseDate = Date.parse('07/06/2020');
+        testOpportunity2.LeadSource = 'Internal Referral';
+        testOpportunity2.Amount = 80000; 
+        insert testOpportunity2;
+        
+        Opportunity testOpportunity3 = new Opportunity(); 
+        testOpportunity3.Name = 'Test Opp 03';
+        testOpportunity3.AccountId = testAccount.Id;
+		testOpportunity3.StageName = 'Initial Lead';
+        testOpportunity3.CurrencyIsoCode = 'USD';
+        testOpportunity3.DMS_Product__c = 'AIFMD Platform;Banking;Board Support';
+        testOpportunity3.CloseDate = Date.parse('07/06/2020');
+        testOpportunity3.LeadSource = 'Internal Referral';
+        testOpportunity3.Amount = 80000; 
+        insert testOpportunity3;
+        	
+        Profile testProfile = [SELECT Id FROM Profile WHERE Name = 'Standard User']; 
+        User testUser = new User(Alias = 'standt',
+                                 Email = 'standarduser@testorg.com',
+                                 EmailEncodingKey = 'UTF-8', 
+                                 LastName = 'Testing', 
+                                 LanguageLocaleKey='en_US',
+                                 LocaleSidKey = 'en_US', ProfileId = testProfile.Id,
+                                 TimeZoneSidKey = 'America/Los_Angeles', 
+                                 UserName = 'testemm010203@testorg.com');
+		insert testUser;       
+        
+        OpportunityTeamMember testMember = new OpportunityTeamMember();
+        testMember.userId = testUser.Id;
+        testMember.OpportunityId = testOpportunity2.Id;
+        testMember.TeamMemberRole = 'Sales Rep';
+        insert testMember;
+    }
+
+    @isTest 
+    static void testPositiveRejectClosedWonOppsWithoutSalesRepsSeveralOpps() {
+               
+        Opportunity newTestOpportunity1 = [SELECT Id, StageName FROM Opportunity WHERE Name = 'Test Opp 01' LIMIT 1]; 
+        Opportunity newTestOpportunity2 = [SELECT Id, StageName FROM Opportunity WHERE Name = 'Test Opp 02' LIMIT 1]; 
+        Opportunity newTestOpportunity3 = [SELECT Id, StageName FROM Opportunity WHERE Name = 'Test Opp 03' LIMIT 1];
+        newTestOpportunity1.StageName = 'Closed Won';
+        newTestOpportunity2.StageName = 'Closed Won';
+        newTestOpportunity3.StageName = 'Closed Won';
+        
+        Map<Id, Opportunity> testOpptyMap = new Map<Id, Opportunity>();
+        testOpptyMap.put(newTestOpportunity1.Id, newTestOpportunity1);
+        testOpptyMap.put(newTestOpportunity2.Id, newTestOpportunity2);
+        testOpptyMap.put(newTestOpportunity3.Id, newTestOpportunity3);
+		
+		Test.startTest();
+        	OpportunityService.rejectClosedWonOppsWithoutSalesReps(testOpptyMap);
+		Test.stopTest();  
+        
+        System.assertEquals('Closed Won', newTestOpportunity2.StageName, 'Expected Opportunity status to be Closed Won');
+        System.assertEquals('Initial Lead', newTestOpportunity1.StageName, 'Expected Opportunity status to be Initial Lead');
+        System.assertEquals('Initial Lead', newTestOpportunity3.StageName, 'Expected Opportunity status to be Initial Lead');
+    }
+    
+    @isTest 
+    static void testPositiveRejectClosedWonOppsWithoutSalesRepsSingleOpp() {
+               
+        Opportunity newTestOpportunity1 = [SELECT StageName FROM Opportunity WHERE Name = 'Test Opp 01' LIMIT 1]; 
+        newTestOpportunity1.StageName = 'Closed Won';
+        
+        Map<Id, Opportunity> testOpptyMap = new Map<Id, Opportunity>();
+        testOpptyMap.put(newTestOpportunity1.Id, newTestOpportunity1);
+		
+		Test.startTest();
+        	OpportunityService.rejectClosedWonOppsWithoutSalesReps(testOpptyMap);
+		Test.stopTest();  
+        
+        System.assertEquals('Initial Lead', newTestOpportunity1.StageName, 'Expected Opportunity status to be Initial Lead');
+    }
+    
+    @isTest 
+    static void testNegativeRejectClosedWonOppsWithoutSalesReps() {
+               
+        Opportunity newTestOpportunity1 = [SELECT StageName FROM Opportunity WHERE Name = 'Test Opp 01' LIMIT 1]; 
+        
+        Map<Id, Opportunity> testOpptyMap = new Map<Id, Opportunity>();
+        testOpptyMap.put(newTestOpportunity1.Id, newTestOpportunity1);
+		
+		Test.startTest();
+        	OpportunityService.rejectClosedWonOppsWithoutSalesreps(testOpptyMap);
+		Test.stopTest();  
+        
+        System.assertEquals('Initial Lead', newTestOpportunity1.StageName, 'Expected Opportunity status to be Initial Lead');
+    }
+    
+}
